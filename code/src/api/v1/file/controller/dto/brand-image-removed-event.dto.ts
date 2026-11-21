@@ -9,7 +9,7 @@ export class BrandImageRemovedEventDto {
   @Equals('brand.images.removed')
   eventType: string;
 
-  @Equals('product_srv_v2')
+  @Equals('product_srv')
   producer: string;
 
   @Equals(1)

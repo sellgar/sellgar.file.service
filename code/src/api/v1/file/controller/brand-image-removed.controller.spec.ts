@@ -13,7 +13,7 @@ describe('Brand image cleanup event', () => {
   const event = {
     eventUuid: '86f7a074-d0bf-4346-8c86-562537d1790d',
     eventType: 'brand.images.removed',
-    producer: 'product_srv_v2',
+    producer: 'product_srv',
     schemaVersion: 1,
     payload: { imageUuids: ['a24f8107-498d-4d79-862b-ea42154f6888'] },
   };
