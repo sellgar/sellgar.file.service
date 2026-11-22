@@ -1,0 +1,4 @@
+[submodule "code/library/sellgar.pagination.library"]
+	path = code/library/sellgar.pagination.library
+	url = git@github.com:sellgar/sellgar.pagination.library.git
+	branch = development

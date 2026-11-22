@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 
+import { RpcHttpExceptionFilter } from './common/rpc-http-exception.filter';
 import { HealthService } from './health/health.service';
 import { AppModule } from './app.module';
 
@@ -14,26 +15,30 @@ async function bootstrap() {
   const config = app.get(ConfigService);
   const port = Number(config.get('PORT') ?? 8080);
 
-  const commands = app.connectMicroservice<MicroserviceOptions>({
-    transport: Transport.RMQ,
-    options: {
-      urls: [
-        {
-          port: config.get('AMQP_PORT'),
-          hostname: config.get('AMQP_HOSTNAME'),
-          username: config.get('AMQP_USERNAME'),
-          password: config.get('AMQP_PASSWORD'),
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.useGlobalFilters(new RpcHttpExceptionFilter());
+
+  const commands = app.connectMicroservice<MicroserviceOptions>(
+    {
+      transport: Transport.RMQ,
+      options: {
+        urls: [
+          {
+            port: config.get('AMQP_PORT'),
+            hostname: config.get('AMQP_HOSTNAME'),
+            username: config.get('AMQP_USERNAME'),
+            password: config.get('AMQP_PASSWORD'),
+          },
+        ],
+        persistent: true,
+        queue: config.get('AMQP_SERVICE_QUEUE'),
+        queueOptions: {
+          durable: true,
         },
-      ],
-      persistent: true,
-      queue: config.get('AMQP_SERVICE_QUEUE'),
-      queueOptions: {
-        durable: true,
       },
     },
-  });
-
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    { inheritAppConfig: true },
+  );
 
   const events = app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.RMQ,

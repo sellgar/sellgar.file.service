@@ -1,10 +1,20 @@
-import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 import { FolderModel } from '../folder/folder.model';
 
 @Entity('file')
 @Index('idx_file_folder_uuid', ['folderUuid'])
 @Index('uq_file_storage_key', ['storageKey'], { unique: true })
+@Index('file_folder_cursor_idx', { synchronize: false })
 export class FileModel {
   @PrimaryColumn('uuid', { name: 'uuid', default: () => 'gen_random_uuid()' })
   uuid: string;

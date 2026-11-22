@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
+import { GetAllFoldersQuery } from './query/get-all-folders.query';
 import { FolderRepository } from '../repository/folder.repository';
 import { CreateFolderDto } from '../repository/dto/create-folder.dto';
 import { UpdateFolderDto } from '../repository/dto/update-folder.dto';
@@ -12,13 +13,8 @@ export class FolderService {
     return this.folderRepository.findByUuid(uuid);
   }
 
-  async findAll(parentUuid: string) {
-    return {
-      data: await this.folderRepository.findAll(parentUuid),
-      meta: {
-        totalRows: await this.folderRepository.count(parentUuid),
-      },
-    };
+  findAll(query: GetAllFoldersQuery = {}) {
+    return this.folderRepository.findAll(query);
   }
 
   create(dto: CreateFolderDto) {

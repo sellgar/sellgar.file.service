@@ -1,28 +1,22 @@
+import { CursorPagination } from '@sellgar/pagination';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 
+import { GetAllFilesQuery } from '../service/query/get-all-files.query';
 import { FileDto } from './dto/file.dto';
 import { FileModel } from '../file.model';
 import { FolderModel } from '../../folder/folder.model';
 
 @Injectable()
 export class FileRepository {
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly pagination: CursorPagination,
+  ) {}
 
-  count(folderUuid: string) {
-    const builder = this.dataSource.createQueryBuilder(FileModel, 'file');
-
-    if (folderUuid) {
-      builder.where('file.folderUuid = :folderUuid', { folderUuid });
-    } else {
-      builder.where('file.folderUuid IS NULL');
-    }
-
-    return builder.getCount();
-  }
-
-  getAll(folderUuid: string) {
+  getAll(query: GetAllFilesQuery = {}) {
+    const { folderUuid } = query;
     const builder = this.dataSource
       .createQueryBuilder(FileModel, 'file')
       .select([
@@ -45,7 +39,14 @@ export class FileRepository {
       builder.where('file.folderUuid IS NULL');
     }
 
-    return builder.getMany();
+    return this.pagination.read(builder, query, {
+      scope: 'file.file.list',
+      filters: { folderUuid: folderUuid ?? null },
+      order: [
+        { expression: 'file.createdAt', direction: 'DESC', type: 'timestamp' },
+        { expression: 'file.uuid', direction: 'ASC', type: 'uuid' },
+      ],
+    });
   }
 
   async create(fileDto: FileDto, folderUuid?: string) {
@@ -80,12 +81,7 @@ export class FileRepository {
         values.uuid = fileDto.uuid;
       }
 
-      const insertResult = await runner.manager
-        .createQueryBuilder()
-        .insert()
-        .into(FileModel)
-        .values(values)
-        .execute();
+      const insertResult = await runner.manager.createQueryBuilder().insert().into(FileModel).values(values).execute();
 
       const uuid = insertResult.raw[0].uuid;
 
@@ -161,12 +157,7 @@ export class FileRepository {
       patch.mime = dto.mime;
     }
 
-    await this.dataSource
-      .createQueryBuilder()
-      .update(FileModel)
-      .set(patch)
-      .where('uuid = :uuid', { uuid })
-      .execute();
+    await this.dataSource.createQueryBuilder().update(FileModel).set(patch).where('uuid = :uuid', { uuid }).execute();
 
     return this.findByUuid(uuid);
   }

@@ -1,9 +1,9 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ClientProxy } from '@nestjs/microservices';
-
 import { firstValueFrom } from 'rxjs';
 
+import { GetAllFilesQuery } from './query/get-all-files.query';
 import { FileRepository } from '../repository/file.repository';
 import { FileDto } from '../repository/dto/file.dto';
 
@@ -16,13 +16,8 @@ export class FileService {
     @Inject('MEDIA_SERVICE') private readonly mediaService: ClientProxy,
   ) {}
 
-  async getAll(folderUuid: string) {
-    return {
-      data: await this.fileRepository.getAll(folderUuid),
-      meta: {
-        totalRows: await this.fileRepository.count(folderUuid),
-      },
-    };
+  getAll(query: GetAllFilesQuery = {}) {
+    return this.fileRepository.getAll(query);
   }
 
   async getMetadataByUuid(uuid: string) {

@@ -1,9 +1,11 @@
+import { CursorPagination } from '@sellgar/pagination';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { plainToInstance } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
 import { DataSource } from 'typeorm';
 
+import { GetAllFoldersQuery } from '../service/query/get-all-folders.query';
 import { CreateFolderDto } from './dto/create-folder.dto';
 import { UpdateFolderDto } from './dto/update-folder.dto';
 import { FolderEntity } from '../folder.entity';
@@ -12,30 +14,34 @@ import { FileModel } from '../../file/file.model';
 
 @Injectable()
 export class FolderRepository {
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly pagination: CursorPagination,
+  ) {}
 
-  count(parentUuid: string = null) {
-    return this.dataSource
-      .createQueryBuilder(FolderModel, 'folder')
-      .where(parentUuid ? 'folder.parentUuid = :parentUuid' : 'folder.parentUuid IS NULL', { parentUuid })
-      .getCount();
-  }
-
-  async findAll(parentUuid: string = null) {
-    const result = await this.dataSource
+  async findAll(query: GetAllFoldersQuery = {}) {
+    const { parentUuid } = query;
+    const builder = this.dataSource
       .createQueryBuilder(FolderModel, 'folder')
       .select(['folder.uuid', 'folder.name', 'folder.parentUuid', 'folder.createdAt', 'folder.updatedAt'])
       .where(parentUuid ? 'folder.parentUuid = :parentUuid' : 'folder.parentUuid IS NULL', { parentUuid })
-      .orderBy('folder.createdAt', 'ASC')
-      .getMany();
+      .orderBy('folder.createdAt', 'ASC');
+    const page = await this.pagination.read(builder, query, {
+      scope: 'file.folder.list',
+      filters: { parentUuid: parentUuid ?? null },
+      order: [
+        { expression: 'folder.createdAt', direction: 'ASC', type: 'timestamp' },
+        { expression: 'folder.uuid', direction: 'ASC', type: 'uuid' },
+      ],
+    });
 
-    const resultInstance = plainToInstance(FolderEntity, result, {
+    const resultInstance = plainToInstance(FolderEntity, page.items, {
       strategy: 'excludeAll',
     });
 
     await Promise.all(resultInstance.map((folder) => validateOrReject(folder)));
 
-    return resultInstance;
+    return { items: resultInstance, meta: page.meta };
   }
 
   findByUuid(uuid: string) {

@@ -4,7 +4,8 @@ COPY code/ ./
 RUN node .yarn/releases/yarn-4.18.0.cjs install --immutable
 
 FROM dependencies AS tests
-RUN node .yarn/releases/yarn-4.18.0.cjs test --runInBand --testPathIgnorePatterns='\.integration[.-]spec\.ts$'
+RUN node .yarn/releases/yarn-4.18.0.cjs workspace @sellgar/pagination build \
+    && node .yarn/releases/yarn-4.18.0.cjs test --runInBand --testPathIgnorePatterns='\.integration[.-]spec\.ts$'
 
 FROM dependencies AS builder
 RUN node .yarn/releases/yarn-4.18.0.cjs build:file_srv
@@ -16,6 +17,8 @@ FROM node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=production-dependencies --chown=node:node /app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /app/library/sellgar.pagination.library/package.json ./library/sellgar.pagination.library/package.json
+COPY --from=builder --chown=node:node /app/library/sellgar.pagination.library/dist ./library/sellgar.pagination.library/dist
 COPY --from=builder --chown=node:node /app/dist ./dist
 COPY --from=builder --chown=node:node /app/package.json ./package.json
 USER node

@@ -14,6 +14,7 @@ import { FileModel } from '../file/file.model';
 
 @Entity('folder')
 @Index('idx_folder_parent_uuid', ['parentUuid'])
+@Index('folder_parent_cursor_idx', { synchronize: false })
 export class FolderModel {
   @PrimaryColumn('uuid', { name: 'uuid', default: () => 'gen_random_uuid()' })
   uuid: string;

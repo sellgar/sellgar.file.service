@@ -1,6 +1,7 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 
+import { GetAllFilesDto } from './dto/get-all-files.dto';
 import { FileService } from '../service/file.service';
 import { FileDto } from '../repository/dto/file.dto';
 
@@ -9,13 +10,13 @@ export class FileController {
   constructor(private readonly fileService: FileService) {}
 
   @Get()
-  getAll(@Query('folderUuid') folderUuid: string) {
-    return this.fileService.getAll(folderUuid);
+  getAll(@Query() query: GetAllFilesDto) {
+    return this.fileService.getAll(query);
   }
 
   @MessagePattern({ cmd: 'file.getAll' })
-  getAllMessage(@Payload('folderUuid') folderUuid?: string) {
-    return this.fileService.getAll(folderUuid);
+  getAllMessage(@Payload() query: GetAllFilesDto) {
+    return this.fileService.getAll(query);
   }
 
   @MessagePattern({ cmd: 'file.getByUuid' })
