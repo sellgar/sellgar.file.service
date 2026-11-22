@@ -38,6 +38,7 @@ export class FileRepository {
     } else {
       builder.where('file.folderUuid IS NULL');
     }
+    builder.andWhere('file.status != :deletedStatus', { deletedStatus: 'deleted' });
 
     return this.pagination.read(builder, query, {
       scope: 'file.file.list',
@@ -114,6 +115,17 @@ export class FileRepository {
   }
 
   findByUuid(uuid: string) {
+    return this.metadataQuery()
+      .where('file.uuid = :uuid', { uuid })
+      .andWhere('file.status != :deletedStatus', { deletedStatus: 'deleted' })
+      .getOne();
+  }
+
+  findForDeletion(uuid: string) {
+    return this.metadataQuery().where('file.uuid = :uuid', { uuid }).getOne();
+  }
+
+  private metadataQuery() {
     return this.dataSource
       .createQueryBuilder(FileModel, 'file')
       .select([
@@ -127,9 +139,7 @@ export class FileRepository {
         'file.folderUuid',
         'file.createdAt',
         'file.updatedAt',
-      ])
-      .where('file.uuid = :uuid', { uuid })
-      .getOne();
+      ]);
   }
 
   async updateUploadState(
@@ -159,6 +169,6 @@ export class FileRepository {
 
     await this.dataSource.createQueryBuilder().update(FileModel).set(patch).where('uuid = :uuid', { uuid }).execute();
 
-    return this.findByUuid(uuid);
+    return this.findForDeletion(uuid);
   }
 }

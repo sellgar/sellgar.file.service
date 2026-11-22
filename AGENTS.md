@@ -24,6 +24,10 @@
 - Внутреннюю коммуникацию с `media_srv` и доменными сервисами строить через RabbitMQ. Не передавать file bytes через Rabbit.
 - `file.delete` сначала удаляет объект через `media.object.delete`, затем
   отмечает metadata как `deleted`. Повторное удаление безопасно.
+- Обычные file.getAll/file.getByUuid исключают deleted в SQL до пагинации.
+  Чтение удалённого UUID даёт NotFound. findForDeletion остаётся отдельным
+  внутренним чтением tombstone для повторной доставки cleanup; updateUploadState
+  возвращает состояние после записи даже при deleted.
 - Очередь `${AMQP_SERVICE_QUEUE}.events` принимает `brand.images.removed`
   из `AMQP_EVENTS_EXCHANGE`. Payload `imageUuids` содержит изображения,
   отсоединенные брендом после успешного сохранения. Подтверждение сообщения

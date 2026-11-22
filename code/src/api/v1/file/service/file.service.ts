@@ -63,7 +63,8 @@ export class FileService {
   }
 
   async deleteByUuid(uuid: string) {
-    const file = await this.getMetadataByUuid(uuid);
+    const file = await this.fileRepository.findForDeletion(uuid);
+    if (!file) throw new NotFoundException(`File ${uuid} not found`);
 
     if (file.status === 'deleted') {
       return file;

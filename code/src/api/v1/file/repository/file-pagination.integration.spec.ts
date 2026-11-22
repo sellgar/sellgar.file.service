@@ -7,6 +7,9 @@ import { DataSource } from 'typeorm';
 import { FileDatabaseOptions } from '../../../../database/file-database.options';
 import { FolderRepository } from '../../folder/repository/folder.repository';
 import { FileRepository } from './file.repository';
+import { FileService } from '../service/file.service';
+import { ConfigService } from '@nestjs/config';
+import { ClientProxy } from '@nestjs/microservices';
 
 const databaseTests = process.env.FILE_PAGINATION_DATABASE_TESTS === '1' ? describe : describe.skip;
 
@@ -15,6 +18,7 @@ databaseTests('File and folder cursor pages in isolated PostgreSQL', () => {
   const folderUuid = randomUUID();
   const otherFolderUuid = randomUUID();
   const ids = Array.from({ length: 5 }, () => randomUUID()).sort();
+  const deletedUuid = randomUUID();
   let source: DataSource;
   let files: FileRepository;
   let folders: FolderRepository;
@@ -42,6 +46,11 @@ databaseTests('File and folder cursor pages in isolated PostgreSQL', () => {
         [uuid, folderUuid, uuid],
       );
     }
+    await source.query(
+      `INSERT INTO file(uuid,name,storage_key,mime,size,folder_uuid,status,created_at)
+       VALUES($1,'Deleted',$3,'image/png',12,$2,'deleted','2026-11-23')`,
+      [deletedUuid, folderUuid, deletedUuid],
+    );
     await source.query(
       `INSERT INTO file(name,storage_key,mime,size,folder_uuid) VALUES('Other','other','image/png',12,$1)`,
       [otherFolderUuid],
@@ -83,5 +92,17 @@ databaseTests('File and folder cursor pages in isolated PostgreSQL', () => {
       items: [],
       meta: { limit: 50, nextToken: null },
     });
+  });
+
+  it('hides deleted metadata from ordinary lookup and preserves idempotent cleanup', async () => {
+    expect(await files.findByUuid(deletedUuid)).toBeNull();
+    const media = { send: jest.fn() };
+    const service = new FileService({} as ConfigService, files, {} as ClientProxy, media as unknown as ClientProxy);
+    await expect(service.getMetadataByUuid(deletedUuid)).rejects.toMatchObject({ status: 404 });
+    expect((await service.deleteByUuid(deletedUuid)).status).toBe('deleted');
+    expect(media.send).not.toHaveBeenCalled();
+    expect((await files.updateUploadState(ids[0], { status: 'deleted' }))?.status).toBe('deleted');
+    expect(await files.findByUuid(ids[0])).toBeNull();
+    expect((await files.findForDeletion(ids[0]))?.status).toBe('deleted');
   });
 });

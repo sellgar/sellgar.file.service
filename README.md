@@ -1,4 +1,12 @@
 
+## Обычное чтение файлов
+
+`file.getAll` и `file.getByUuid` исключают metadata со статусом `deleted` в запросах
+к PostgreSQL до пагинации. Удалённый UUID в обычном чтении даёт NotFound.
+Внутренний `findForDeletion` сохраняет доступ к tombstone для безопасного повторения
+cleanup. Изменения статуса возвращают записанное состояние, включая `deleted`.
+Правила удаления папок и связей с другими доменами этим изменением не меняются.
+
 ## CI и доставка
 
 Push в `development` запускает unit → build → publish → migrate → deploy.

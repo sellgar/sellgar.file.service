@@ -7,7 +7,7 @@ import { FileRepository } from '../repository/file.repository';
 import { FileService } from './file.service';
 
 describe('File deletion', () => {
-  const repository = { findByUuid: jest.fn(), updateUploadState: jest.fn() };
+  const repository = { findByUuid: jest.fn(), findForDeletion: jest.fn(), updateUploadState: jest.fn() };
   const mediaClient = { send: jest.fn() };
   const service = new FileService(
     {} as ConfigService,
@@ -19,7 +19,7 @@ describe('File deletion', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    repository.findByUuid.mockResolvedValue(file);
+    repository.findForDeletion.mockResolvedValue(file);
     mediaClient.send.mockReturnValue(of({ storageKey: file.storageKey }));
   });
 
@@ -42,7 +42,7 @@ describe('File deletion', () => {
   });
 
   it('does not repeat deletion after an already completed delivery', async () => {
-    repository.findByUuid.mockResolvedValue({ ...file, status: 'deleted' });
+    repository.findForDeletion.mockResolvedValue({ ...file, status: 'deleted' });
 
     await service.deleteByUuid(file.uuid);
     expect(mediaClient.send).not.toHaveBeenCalled();
@@ -50,14 +50,14 @@ describe('File deletion', () => {
   });
 
   it('continues batch cleanup when one of the files no longer exists', async () => {
-    repository.findByUuid.mockResolvedValueOnce(null).mockResolvedValueOnce(file);
+    repository.findForDeletion.mockResolvedValueOnce(null).mockResolvedValueOnce(file);
 
     await service.deleteByUuids(['missing', file.uuid]);
     expect(repository.updateUploadState).toHaveBeenCalledWith(file.uuid, { status: 'deleted', expiresAt: null });
   });
 
   it('still reports a missing file for a direct deletion command', async () => {
-    repository.findByUuid.mockResolvedValue(null);
+    repository.findForDeletion.mockResolvedValue(null);
 
     await expect(service.deleteByUuid('missing')).rejects.toThrow(NotFoundException);
     expect(mediaClient.send).not.toHaveBeenCalled();
